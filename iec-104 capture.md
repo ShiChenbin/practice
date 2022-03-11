@@ -1,0 +1,46 @@
+# 捕获protocol modbus_IEC104_cdt工具包发出的信息，并对其分析
+
+工具包来源：https://gitee.com/weiyigulu_admin/protocol
+
+# 主要分析的IEC-104协议下发出的包
+工具是基于MAVEN下的，gradle不知道如何调取这个工具的依赖【待解决】
+
+该工具内附有测试软件包，可以先用其进行测试。
+
+项目打开路径：文件 file -> file open -> open protocol-master.pom.xml -> open as project
+
+我们分析的是IEC-104协议，所以我们启动对应软件包下的测试类就可以了，打开后目录如下，
+
+![image](https://user-images.githubusercontent.com/49110003/157814076-a1d7763f-2595-4aab-b672-fff679b276ab.png)
+
+注意端口都是2404的，即port:2404
+(如果抛出error很有可能是端口不一致导致的，原工具包已经配置好，一般不会出现)
+
+- 准备wireshark
+
+打开上述目录下的test包
+run
+- server4
+- SlaveTest
+- MasterTest
+- ClientTest
+
+然后抓包，然后找到iec104的项
+
+![image](https://user-images.githubusercontent.com/49110003/157815696-01e4c7f0-a01e-4818-b6f2-0e3b2b38251a.png)
+
+！[图片] (https://user-images.githubusercontent.com/49110003/157816384-f2c73fbf-3cd9-4245-8de6-f287f9bf90d5.png)
+
+- 在 APDU 应用规约数据单元中，APCI应用规约控制信息中的启动字符为68H，可以发现68H恰好对应的是start，符合iec104协议中的启动字符为（68H）
+- 然后APDU的长度是4，也就是ASDU+4，那么可以得出ASDU = 0
+- 剩下的是07 00 00 00，这部分是（控制域1+控制域2+控制域3+控制域4）+（ASDU应用服务数据单元【可选】）
+- Type: I（0x00）表示I帧， I帧中的控制域1与控制域2为发送序号，控制域3与控制域4为接收序号。
+- DEC = 1，HEX = 01，含义单点信息，说明不带时标的单点遥信，每个遥信占一个字节
+
+干脆筛完全部看IEC部分
+![image](https://user-images.githubusercontent.com/49110003/157819171-d968dbd7-56c0-4d61-a61e-90d7818acbd7.png)
+
+定睛一分析，那么必然是只有发送方而接受方无作为
+![image](https://user-images.githubusercontent.com/49110003/157819533-6b0a8397-5bec-4cf9-8202-acd70d31508c.png)
+
+注意接受方的端口，我是在本机上进行的所以接受方的端口应该是在本机上127.0.0.1
