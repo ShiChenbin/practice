@@ -77,7 +77,7 @@ run
 
 ![image](https://user-images.githubusercontent.com/49110003/157815696-01e4c7f0-a01e-4818-b6f2-0e3b2b38251a.png)
 
-！[图片] (https://user-images.githubusercontent.com/49110003/157816384-f2c73fbf-3cd9-4245-8de6-f287f9bf90d5.png)
+![图片](https://user-images.githubusercontent.com/49110003/157816384-f2c73fbf-3cd9-4245-8de6-f287f9bf90d5.png)
 
 - 在 APDU 应用规约数据单元中，APCI应用规约控制信息中的启动字符为68H，可以发现68H恰好对应的是start，符合iec104协议中的启动字符为（68H）
 - 然后APDU的长度是4，也就是ASDU+4，那么可以得出ASDU = 0
