@@ -13,16 +13,52 @@
 
 ![image](https://user-images.githubusercontent.com/49110003/157814076-a1d7763f-2595-4aab-b672-fff679b276ab.png)
 
+# 根据项目目录分析项目各个类的作用
+
+annotation
+AsduType.java（APDU应用规约数据单元：默认值、类型id、是否优先判断函数、名字构建器)
+apdumodel （APDI模型）
+- Apdu.java()（本端发送序列号、本端接受序列号、本端的类型、ASDU应用服务数据单元，iec 104 builder，记录传输通道、枚举APCI类型【i帧、s帧、u帧】、loadByteBuf【读取字节流，将数据转化为APDU】）
+- Asdu.java（asdu实体）
+- Cot.java（传输原因）
+- package-info.java
+- Vsq.java
+
+asdudataframe（asdu数据框架）
+container（容器）
+excepttion（异常处理）
+nettyconfig（网络配置）
+util
+
+test
+java
+- ClientTest（客户端测试）新建一个ip和该ip的端口（127.0.0.1:2404），设置共享ip（127.0.0.1）
+- MasterTest（主机测试）生成一个主机端口（也是127.0.0.1:2404）
+- NettyClient （网络客户端） 绑定线程池->指定使用的通道channel->绑定客户端连接时触发的操作（服务器异步创建绑定）->最后关闭服务器通道
+接收服务端发送来的消息channelRead0 + 与服务器建立连接channelActive + 与服务器断开连接channelInactive + 异常处理exceptionCaught
+- - ClientHandler4（客户端处理程序）
+- - NettyClient （客户端网络）
+- Server4（测试客户端）
+- - Server4 （测试客户端）辅助启动类->设置线程池->设置socket工厂（套接口） ->设置管道工厂 —>设置TCP参数
+- - ServerHandler4 读取客户端发送的数据
+- SlaveTest 附属测试
+- TestTotals 完全测试
+            
+
 注意端口都是2404的，即port:2404
 (如果抛出error很有可能是端口不一致导致的，原工具包已经配置好，一般不会出现)
 
 - 准备wireshark
 
 打开上述目录下的test包
+
+启动顺序应该是
 run
-- server4
-- SlaveTest
-- MasterTest
+
+//NettyClient和Server4不能同时启动？否侧会抛出地址已经被使用的报错，例如`Address already in use: bind`
+- SlaveTest （发出U帧，启动命令）
+- server4 （显示sever start ...... ）
+- MasterTest （）
 - ClientTest
 
 然后抓包，然后找到iec104的项
