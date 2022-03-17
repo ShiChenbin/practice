@@ -1,0 +1,141 @@
+
+- 客户端测试
+```java
+public class ClientTest {
+	public static void main(String[] args) {
+		new Iec104HSMasterBuilder("127.0.0.1", 2404).create(); //建立一个IEC104协议主站，ip地址是127.0.0.1 端口是2404
+		System.out.println(123);
+	}
+}
+```
+
+- 主机端
+```java
+public class MasterTest {
+
+	public static void main(String[] args) throws Exception {
+		ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.ADVANCED);//对占用资源的变量进行监控，可以保护任何一个可能出现泄露的资源
+		Iec104HSMasterBuilder masterBuilder = new Iec104HSMasterBuilder("127.0.0.1", 2409);
+		//新建一个主机端口，端口ip是127.0.0.1，端口号是2409
+		masterBuilder.createByUnBlock(); //以工具内的单线程池执行
+		Thread.sleep(3000L); //暂停当前线程
+		SendCommandHelper.sendShortCommand(masterBuilder, 0, 1, 16385, 0.452f);
+		//发送控制命令
+	/*	//创建总召唤类型I帧
+		TotalSummonType totalSummonType = new TotalSummonType();
+		//反向生成asdu
+		Asdu asdu = totalSummonType.generateBack();
+		//配置总召唤发送原因
+		asdu.setNot(6);
+		//配置公共地址位
+		asdu.setCommonAddress(1);
+		Apdu apdu = new Apdu().setAsdu(asdu);
+		masterBuilder.sendFrameToOpposite(apdu.encode());*/
+
+	}
+}
+```
+
+- 测试客户端
+```java
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.string.StringDecoder;
+import io.netty.handler.codec.string.StringEncoder;
+
+/**
+ * 测试客户端
+ *
+ * @author 修唯xiuwei
+ * @create 2018-02-05 15:56
+ * @Email 524710549@qq.com
+ **/
+public class NettyClient {
+	public static void main(String[] args) {
+		EventLoopGroup group = new NioEventLoopGroup(); //新建一个（独立）的Reactor线程池
+		try {
+			Bootstrap sb = new Bootstrap();
+			// 绑定线程池
+			sb.group(group)
+					// 指定使用的channel
+					.channel(NioSocketChannel.class)
+					// 绑定监听端口
+					// 绑定客户端连接时候触发操作
+					.handler(new ChannelInitializer<NioSocketChannel>() {
+						@Override
+						protected void initChannel(NioSocketChannel ch) throws Exception {
+							ch.pipeline().addLast(new StringDecoder());
+							//字符串编码器
+							ch.pipeline().addLast(new StringEncoder());
+							//处理类
+							ch.pipeline().addLast(new ClientHandler4());
+						}
+					});
+			// 服务器异步创建绑定
+			ChannelFuture cf = sb.bind("127.0.0.1", 2404);
+			System.out.println("1" + cf.isSuccess());
+			cf.sync();
+			System.out.println("2" + cf.isSuccess());
+
+			System.out.println("4" + cf.isDone());
+			System.out.println(cf.getClass().getSimpleName());
+			// 关闭服务器通道
+			ChannelFuture ff = cf.channel().closeFuture();
+			System.out.println(ff.getClass().getSimpleName());
+			System.out.println(ff.sync());
+			System.out.println("is==" + (cf == ff));
+			System.out.println(cf.isDone());
+			System.out.println("3" + cf.isSuccess());
+
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				// 释放线程池资源
+				group.shutdownGracefully().sync();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+
+		//worker负责读写数据
+
+	}
+
+}
+
+class ClientHandler4 extends SimpleChannelInboundHandler<String> {
+
+	//接受服务端发来的消息
+	@Override
+	protected void channelRead0(ChannelHandlerContext ctx, String msg) throws Exception {
+		System.out.println("server response ： " + msg);
+	}
+
+	//与服务器建立连接
+	@Override
+	public void channelActive(ChannelHandlerContext ctx) throws Exception {
+		//给服务器发消息
+		ctx.channel().writeAndFlush("i am client !\n");
+
+		System.out.println("channelActive");
+	}
+
+	//与服务器断开连接
+	@Override
+	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+		System.out.println("channelInactive");
+	}
+
+	//异常
+	@Override
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		//关闭管道
+		ctx.channel().close();
+		//打印异常信息
+		cause.printStackTrace();
+	}
+}
+```
