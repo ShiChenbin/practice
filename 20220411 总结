@@ -1,0 +1,190 @@
+项目阶段总结 2022-04-11 周一
+负责的生产管理和系统日志模块完成接口也完成了对接，没什么问题，后端的水平太低了还是要多学习阿，故对此做一个阶段性的总结，并记录最近学习到的知识点。
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/4a122eab09fa421994c7a8548b23e0ea.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA5pyI5YWJ5LiN5p-T5piv6Z2e,size_20,color_FFFFFF,t_70,g_se,x_16)
+
+# 知识点目录
+1.mybatis plus 的 CURD
+2.git 的使用
+3.xshell项目的部署
+
+注：以上三个软件的安装选择社区版或者是校园版基本就能满足开发需求，可以在官网直接下载。
+
+# 1.产生日志功能
+需求中要求，对应产生实质性操作的时候，产生一条操作信息。
+我的实现思路是，创建一个函数（接口），在其他模块产生实质性操作的时候，就直接在实质性操作的模块里调用这个函数，这个函数的功能实际上就是单纯的mybatis plus提供的insert。
+
+下面是伪代码
+service层
+```java
+ResponseModel<HLog> insertLog(HLog vo, HttpServletRequest request);
+```
+impl层
+```java
+public ResponseModel<HLog> insertLog(HLog vo, HttpServletRequest request){
+	if(error)
+	return ResponseModel.build(ErrorCode.PARAM_ERROR);
+	else {
+		return ResponseModel.buildSuccess(vo);
+	}
+}
+```
+某创建功能中使用添加 日志方法
+```java
+    @Resource
+    private HLogService hLogService;
+
+hLogService.insertLog(new HLog().setTypes("新建").setDetails("创建").setModule("项目管理"), request);
+```
+体会：这种涉及多个模块的功能还是多和其他人沟通的，不然别人不知道你实现这个函数是需要每个模块里面加的，最后还得自己加，属于是实现一时爽，添加。
+
+## 获取服务器的ip地址
+关于`HttpServletRequest request`，这是一个请求声明，没有初始化显然是不行的，但本次使用和实现我都是放在函数的传参当中于是乎就不用考虑`HttpServletRequest request`初始化的问题了。
+
+但如果不在函数的传参中声明，要在方法中怎么初始化还是一个疑问，尝试过赋值null，那就不是当前请求的request了，所以应该不是。
+
+```java
+	getRequestURL();//方法返回客户端发出请求时的完整URL。
+	getRequestURI();//方法返回请求行中的资源名部分。
+　　getQueryString();// 方法返回请求行中的参数部分。
+　　getPathInfo();//方法返回请求URL中的额外路径信息。额外路径信息是请求URL中的位于Servlet的路径之后和查询参数之前的内容，它以“/”开头。
+　　getRemoteAddr();//方法返回发出请求的客户机的IP地址。
+　　getRemoteHost();//方法返回发出请求的客户机的完整主机名。
+　　getRemotePort();//方法返回客户机所使用的网络端口号。
+　　getLocalAddr();//方法返回WEB服务器的IP地址。
+　　getLocalName();//方法返回WEB服务器的主机名。
+```
+request既可以提供方法也可以作为传参使用
+```java
+vo.setServerIp(IpUtils.getIpAddr(request));//设置当前服务器ip
+```
+上面有`IpUtils`是项目已经实现好封装的方法类还是挺好用的，同样的还有`UserInfoUtils`
+```java
+final UserInfoDTO userInfoDTO = UserInfoUtils.getCurrentUserInfoOrDefault();
+```
+能够通过这个获取当前用户的信息等等。
+
+## 日志分页查询
+查询功能的实现,查询功能的实现比较关键（在我看来是以下这几点）
+1.设置查询的条件
+2.查询的表有哪些
+3.查询的返回值
+
+其中在实现过程中，遇到的比较大的问题，就是多表联查的问题，一对一和一对多的判断。（生产日志中没有多表联查，所以暂时不提）
+
+需要注意的是，在时间查询当中，时间的传入是用`String`进行传入的，而不是`LocalDateTime`或者`LocalDate`,时间范围的比较使用`between`和`le`与`ge`都没什么问题
+
+- 模糊匹配就用`like("column", word,)`
+- 或 就用or()
+- 相等就用eq()
+- 其他的有需要的条件都可以去mybatis plus的官网进行查询和阅读
+
+关于分页
+```java
+return this.baseMapper.selectPage(new Page<>(pageNum, pageSize), queryWrapper);
+```
+有直接提供Page类可以进行分类，不需要自己在进行实现，只需要设定好页数和每页显示的项数即可（queryWrapper是查询条件）
+
+# 台账
+主要说一下联查其他就不叙述了。
+
+其实查询的条件有些是需要后端返回信息给前端的，如下
+![在这里插入图片描述](https://img-blog.csdnimg.cn/2a853cfe46de45aa84d9daf1b13ac4cb.png)
+（应该是日志模块的，但是这里想到了，就在此叙述了）
+本次项目是通过再新建相应的实体和方法类去返回值给前端的，给module和type都写，并且都写了CURD。
+
+据了解其实可以使用一个code表去实现也可以。
+
+## 联查
+需要理清楚需要查询的表、表连接的条件、查询应该要返回的值
+
+mapper.xml 文件
+```java
+<select id="名字与mapper层一致" resultType="返回的结果类DTO">
+        SELECT
+        h_production_management.NAME,
+       ......查询需要的值
+        ( SELECT count( 1 ) FROM h_file_plan WHERE plan_id = h_mould.plan_id ) AS validationSize
+        统计第一列有多少条数据
+        FROM
+        h_standing_book
+        LEFT JOIN h_mould ON h_standing_book.plan_id = h_mould.plan_id
+		......对需要查询的表作连接
+		
+		......查询条件
+        WHERE 1 = 1
+        <if test="name!=null and name!='' ">
+            AND h_production_management.`name` LIKE CONCAT(CONCAT('%', #{name}), '%')
+        </if>
+        <if test="province!=null and province!='' ">
+            AND h_production_management.province = #{province}
+        </if>
+        <if test="city!=null and city!='' ">
+            AND h_production_management.city = #{city}
+        </if>
+        AND h_plan_management.plan_end_time BETWEEN #{begin} AND #{end}
+		...... 查询值的排序
+        ORDER BY h_plan_management.comloetion_end_time,
+        h_plan_management.mix_tower,
+        h_plan_management.paragraph,
+        h_mould.mould_number ASC
+    </select>
+```
+mapper层
+
+别名： dao层
+用途： 对数据库进行数据持久化操作，他的方法语句是直接针对数据库操作的，主要实现一些增删改查操作，在mybatis中方法主要与与xxx.xml内相互一一映射。
+```java
+Page<实体类> queryStandingBook(@Param("name") String name, @Param("begin") LocalDate begin, @Param("end") LocalDate end, @Param("province") String province, @Param("city") String city,Page page);
+```
+
+然后就和普通查询一样了。
+
+## 略
+
+# Xshell与Xftp 7
+
+安装白嫖版即可。
+
+用于部署项目，稍微简单叙述一下流程
+
+1.文件-新建会话
+
+根据具体情况建立会话
+![在这里插入图片描述](https://img-blog.csdnimg.cn/47e3cd1689804f34963b0ebf9d0bdd7b.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA5pyI5YWJ5LiN5p-T5piv6Z2e,size_8,color_FFFFFF,t_70,g_se,x_16)
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/9969278f752545dbadbd507ac2be21e1.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA5pyI5YWJ5LiN5p-T5piv6Z2e,size_20,color_FFFFFF,t_70,g_se,x_16)
+然后建立完连接
+![在这里插入图片描述](https://img-blog.csdnimg.cn/baebf73f1860406ebad97eae54282346.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA5pyI5YWJ5LiN5p-T5piv6Z2e,size_20,color_FFFFFF,t_70,g_se,x_16)
+Linux操作即可。
+
+更新一个项目的步骤是这样的
+1.建立会话
+2.打开你项目应该部署的文件夹，一般是在application.yml文件里面会定义部署文件夹，也定义部署的端口号
+![在这里插入图片描述](https://img-blog.csdnimg.cn/60ee9d03f4444336a7786cffc570cb61.png)
+```
+cd /usr/local/src/jars
+```
+3.打开netsta -tunlp 查看当前进程，如果老版本占用部署端口且正在运行就会显示，那么就需要杀掉
+```
+kill pid
+```
+4.打开xftp,将原jar包删掉
+![在这里插入图片描述](https://img-blog.csdnimg.cn/82a9fc8c2f6f46aea67bedf20bf80deb.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA5pyI5YWJ5LiN5p-T5piv6Z2e,size_20,color_FFFFFF,t_70,g_se,x_16)
+5.项目生成jar包
+![在这里插入图片描述](https://img-blog.csdnimg.cn/4c0eda42b3b84b7591e30640ff54f8cd.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA5pyI5YWJ5LiN5p-T5piv6Z2e,size_10,color_FFFFFF,t_70,g_se,x_16)
+jar包在这里
+![在这里插入图片描述](https://img-blog.csdnimg.cn/6f95ba86f2b3400a95ced51b5e7159c7.png)
+然后通过xftp上传那个部署文件夹中
+
+6.运行
+限制内存启动
+```
+nohup java -jar -Dfile.encoding=utf-8 -Xms200M -Xmx300M -server XXXX.jar > out.log 2>&1 &
+```
+`> out.log 2>&1`这个是指定日志文件位置
+
+```
+nohup java -jar -Xms200M -Xmx300M XXXX.jar &
+```
+即可。
