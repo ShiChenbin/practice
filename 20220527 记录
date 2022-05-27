@@ -1,0 +1,108 @@
+# java 基础知识
+
+参考文献
+
+https://www.nowcoder.com/exam/interview/detail?questionClassifyId=0&questionId=2412817&questionJobId=160&type=1
+
+## 类型转换
+
+```cpp
+byte a1 = 2, a2 = 4, a3;
+short s = 16;
+a2 = s;
+a3 = a1 * a2;
+```
+
+short类型转为byte类型出错
+
+a1*a2结果为int类型，转为byte类型出错
+
+## 请你说说线程和协程的区别
+
+协程，又称微线程，纤程。英文名Coroutine。
+
+协程运行在线程之上，当一个协程执行完成之后，可以选择主动让出，让另一个协程运行在当前线程之上。协程并没有增加线程数量，只是在线程的基础上通过分时复用的方式运行多个协程，而且协程的切换在用户态完成，切换的代价比线程从用户态到内核态的代价小很多。
+
+## 请你说说进程和线程的区别
+
+1. 进程有独立的地址空间,线程有自己的堆栈和局部变量,但线程之间没有单独的地址空间； 
+
+2. 进程和线程切换时,需要切换进程和线程的上下文,进程的上下文切换时间开销远远大于线程上下文切换时间,耗费资源较大,效率要差一些；
+
+3. 进程的并发性较低,线程的并发性较高；
+
+4. 每个独立的进程有一个程序运行的入口、顺序执行序列和程序的出口,但是线程不能够独立执行,必须依存在应用程序中,由应用程序提供多个线程执行控制；
+
+5. 系统在运行的时候会为每个进程分配不同的内存空间；而对线程而言,除了 CPU 外,系统不会为线程分配内存（线程所使用的资源来自其所属进程的资源）,线程组之间只能共享资源；
+
+6. 一个进程崩溃后,在保护模式下不会对其他进程产生影响,但是一个线程崩溃整个进程都死掉。所以多进程要比多线程健壮。
+
+
+
+
+# 起源
+
+## 什么是spring
+
+spring是一个支持快速开发jave ee应用程序框架
+
+
+
+## spring framework
+
+Spring Framework主要包括几个模块：
+
+- 支持IoC和AOP的容器；
+- 支持JDBC和ORM的数据访问模块；
+- 支持声明式事务的模块；
+- 支持基于Servlet的MVC开发；
+- 支持基于Reactive的Web开发；
+- 以及集成JMS、JavaMail、JMX、缓存等其他模块。
+
+
+
+## 容器概念
+
+容器是一种为某种特定组件的运行提供必要支持的一个软件环境
+
+例子：tomcat就是一个servlet容器
+
+Spring的核心就是提供了一个IoC（Inversion of Control， 直译控制反转）容器，它可以管理所有轻量级的JavaBean组件，提供的底层服务包括组件的生命周期管理、配置和组装服务、AOP支持，以及建立在AOP基础上的声明式事务服务等。
+
+
+
+在传统的应用程序中，控制权在程序本身，程序的控制流程完全由开发者控制
+
+也就是一个组件
+
+### HttpServletrequest 流只能被读取一次
+
+为了保证安全性，所以HttpServletrequest流只能被读取一次，读取一次之后这个流就是为空了。
+
+- 解决办法利用HttpServletRequestWrapper+Filter解决输入流不能重复读取的问题
+
+定义一个容器，将输入流里面的数据存储到这个容器里面
+
+
+
+## springboot + mybatis plus 参考
+
+```java
+@Api(tags = "该模块的模块名")
+@Slf4j
+@RestController
+@RequestMapping("/module")
+```
+
+
+
+### 新增
+
+#### controller
+
+```java
+/* controller层 */
+@ApiOperation(value = "新增", notes = "新增", response = String.class)
+@PostMapping(value = "/insert")
+```
+
